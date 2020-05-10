@@ -3,10 +3,7 @@ package com.redislabs.university.RU102J.dao;
 import com.redislabs.university.RU102J.api.Measurement;
 import com.redislabs.university.RU102J.api.MeterReading;
 import com.redislabs.university.RU102J.api.MetricUnit;
-import redis.clients.jedis.Jedis;
-import redis.clients.jedis.JedisPool;
-import redis.clients.jedis.Pipeline;
-import redis.clients.jedis.Tuple;
+import redis.clients.jedis.*;
 
 import java.text.DecimalFormat;
 import java.time.ZoneOffset;
@@ -51,9 +48,11 @@ public class MetricDaoRedisZsetImpl implements MetricDao {
         String metricKey = RedisSchema.getDayMetricKey(siteId, unit, dateTime);
         Integer minuteOfDay = getMinuteOfDay(dateTime);
         // START Challenge #2
-        MeasurementMinute measurementMinute = new MeasurementMinute( value, 0 );
-        jedis.zadd(metricKey, minuteOfDay, measurementMinute.toString()  );
-
+        MeasurementMinute measurementMinute = new MeasurementMinute( value, minuteOfDay );
+        Pipeline p = jedis.pipelined();
+        p.zadd(metricKey, minuteOfDay, measurementMinute.toString()  );
+        p.expire(metricKey, METRIC_EXPIRATION_SECONDS);
+        p.sync();
         // END Challenge #2
     }
 
