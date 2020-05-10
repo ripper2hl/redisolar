@@ -49,10 +49,11 @@ public class MetricDaoRedisZsetImpl implements MetricDao {
         Integer minuteOfDay = getMinuteOfDay(dateTime);
         // START Challenge #2
         MeasurementMinute measurementMinute = new MeasurementMinute( value, minuteOfDay );
-        Pipeline p = jedis.pipelined();
-        p.zadd(metricKey, minuteOfDay, measurementMinute.toString()  );
-        p.expire(metricKey, METRIC_EXPIRATION_SECONDS);
-        p.sync();
+        try(Pipeline p = jedis.pipelined()){
+            p.zadd(metricKey, minuteOfDay, measurementMinute.toString()  );
+            p.expire(metricKey, METRIC_EXPIRATION_SECONDS);
+            p.sync();
+        }
         // END Challenge #2
     }
 
