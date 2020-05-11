@@ -31,11 +31,12 @@ public class RateLimiterSlidingDaoRedisImpl implements RateLimiter {
         String key = RedisSchema.getRateLimiterKey(name, (int) windowSizeMS, maxHits);
         try(Jedis jedis = jedisPool.getResource()){
             try( Transaction transaction = jedis.multi() ){
-                transaction.zadd(key, System.currentTimeMillis(), UUID.randomUUID().toString() );
-                transaction.zremrangeByScore(key, System.currentTimeMillis() , windowSizeMS );
+                long millis = System.currentTimeMillis();
+                transaction.zadd(key, millis, UUID.randomUUID().toString() );
+                transaction.zremrangeByScore(key,     windowSizeMS     , millis - windowSizeMS  );
                 Response<Long> countedHits = transaction.zcard(key);
                 transaction.exec();
-                if(countedHits.get() > maxHits){
+                if(countedHits.get() > maxHits ){
                     throw new RateLimitExceededException();
                 }
             }
