@@ -33,7 +33,7 @@ public class RateLimiterSlidingDaoRedisImpl implements RateLimiter {
             try( Transaction transaction = jedis.multi() ){
                 long millis = System.currentTimeMillis();
                 transaction.zadd(key, millis, UUID.randomUUID().toString() );
-                transaction.zremrangeByScore(key,     windowSizeMS     , millis - windowSizeMS  );
+                transaction.zremrangeByScore(key,     0     , millis - windowSizeMS  );
                 Response<Long> countedHits = transaction.zcard(key);
                 transaction.exec();
                 if(countedHits.get() > maxHits ){
