@@ -1,11 +1,14 @@
 package com.redislabs.university.RU102J.dao;
 
+import com.redislabs.university.RU102J.RedisConfig;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.Response;
 import redis.clients.jedis.Transaction;
 
 import java.time.ZonedDateTime;
+import java.util.UUID;
+
 import com.redislabs.university.RU102J.core.KeyHelper;
 
 public class RateLimiterSlidingDaoRedisImpl implements RateLimiter {
@@ -25,6 +28,19 @@ public class RateLimiterSlidingDaoRedisImpl implements RateLimiter {
     @Override
     public void hit(String name) throws RateLimitExceededException {
         // START CHALLENGE #7
+        String key = RedisSchema.getRateLimiterKey(name, (int) windowSizeMS, maxHits);
+        try(Jedis jedis = jedisPool.getResource()){
+            try( Transaction transaction = jedis.multi() ){
+                transaction.zadd(key, System.currentTimeMillis(), UUID.randomUUID().toString() );
+                transaction.zremrangeByScore(key, System.currentTimeMillis() , windowSizeMS );
+                Response<Long> countedHits = transaction.zcard(key);
+                transaction.exec();
+                if(countedHits.get() > maxHits){
+                    throw new RateLimitExceededException();
+                }
+            }
+        }
+        
         // END CHALLENGE #7
     }
 }
