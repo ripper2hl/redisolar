@@ -84,10 +84,6 @@ public class SiteGeoDaoRedisImpl implements SiteGeoDao {
                      .collect(Collectors.toSet());
 
              // START Challenge #5
-             sites.stream().map( site -> {
-                 return RedisSchema.getSiteHashKey( site.getId() );
-             }).collect(Collectors.toList());
-             
              Map<Long, Response<Double>> scores = sites.stream()
                      .collect(Collectors
                              .toMap( site ->  site.getId(),
