@@ -56,10 +56,11 @@ public class SiteGeoDaoRedisImpl implements SiteGeoDao {
     }
 
     // Challenge #5
+    /*
     private Set<Site> findSitesByGeoWithCapacity(GeoQuery query) {
         return Collections.emptySet();
     }
-    /* UNCOMMENT this method for Challenge #5
+     */
     private Set<Site> findSitesByGeoWithCapacity(GeoQuery query) {
         Set<Site> results = new HashSet<>();
         Coordinate coord = query.getCoordinate();
@@ -70,18 +71,28 @@ public class SiteGeoDaoRedisImpl implements SiteGeoDao {
              // START Challenge #5
 
              // TODO Get the sites matching the geo query.
-
+             String key = RedisSchema.getSiteGeoKey();
+             List<GeoRadiusResponse> radiusResponses = jedis.georadius(key, coord.getLng(), coord.getLat(), radius, radiusUnit);
              // END Challenge #5
-
-             Set<Site> sites = radiusResponses.stream()
-                     .map(response -> jedis.hgetAll(response.getMemberByString()))
+             Pipeline pipeline = jedis.pipelined();
+             List<Response<Map <String ,String >>> sitesResponses = radiusResponses.stream()
+                     .map(response -> pipeline.hgetAll(response.getMemberByString())).collect(Collectors.toList());
+             pipeline.sync();
+             Set<Site> sites = sitesResponses.stream()
                      .filter(Objects::nonNull)
-                     .map(Site::new).collect(Collectors.toSet());
+                     .map(s ->  new Site(s.get()) )
+                     .collect(Collectors.toSet());
 
              // START Challenge #5
-
-             // TODO Add the code that populates the scores HashMap.
-
+             sites.stream().map( site -> {
+                 return RedisSchema.getSiteHashKey( site.getId() );
+             }).collect(Collectors.toList());
+             
+             Map<Long, Response<Double>> scores = sites.stream()
+                     .collect(Collectors
+                             .toMap( site ->  site.getId(),
+                                     site -> pipeline.zscore( RedisSchema.getCapacityRankingKey(), site.getId().toString() ) ) );
+             pipeline.sync();
              // END Challenge #5
 
              for (Site site : sites) {
@@ -92,7 +103,7 @@ public class SiteGeoDaoRedisImpl implements SiteGeoDao {
          }
 
          return results;
-    } */
+    }
 
     private Set<Site> findSitesByGeo(GeoQuery query) {
         Coordinate coord = query.getCoordinate();
